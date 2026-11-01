@@ -140,7 +140,7 @@ Pada tahap minggu ke-6, model deteksi YOLOv8n dilatih untuk membuktikan hipotesi
 
 Pj1 (*Perception System Concept and Design*) merupakan integrasi menyeluruh minggu 3–7 untuk sistem visi robot nyata.
 
-### 1. Hasil Resmi Pelatihan 30 Epochs (Slide 37)
+### 1. Hasil Resmi Pelatihan 30 Epochs
 Terekam resmi di berkas [`hasil_praktik_422411022.txt`](hasil_praktik_422411022.txt) (Sidik Jari Label: `8E25699C0A30`):
 
 | Eksperimen | Perubahan Parameter | mAP50 | mAP50-95 | Precision | Recall | Inferensi (ms) | Waktu Latih |
@@ -157,7 +157,7 @@ Terekam resmi di berkas [`hasil_praktik_422411022.txt`](hasil_praktik_422411022.
   - **Precision**: **0.997** | **Recall**: **1.000**
 - **Analisis Overfitting**: Selisih mAP antara data validasi (0.919) dan data test (0.915) hanya $0.004$ ($<0.5\%$). Ini membuktikan model memiliki **kemampuan generalisasi sempurna** pada data yang belum pernah dilihat.
 
-### 3. Desain Sistem Persepsi & Kelaikan Robotika (Slide 32)
+### 3. Desain Sistem Persepsi & Kelaikan Robotika
 - **Target Misi**: Deteksi balok warna merah, hijau, hitam untuk sistem sortasi lengan robot Universal Robots (UR).
 - **Hardware Kamera**: Webcam eksternal **Intel RealSense D455** pada resolusi terkoreksi $1280 \times 720$.
 - **Analisis Waktu Siklus**: Waktu inferensi model terpilih E3 adalah **24.9 ms** (~40.1 FPS), jauh di bawah ambang batas aman penglihatan robot **66.7 ms (15 FPS)**.

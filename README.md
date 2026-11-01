@@ -14,6 +14,17 @@
 
 ---
 
+## 🌟 HASIL AKHIR: DEMONSTRASI DETEKSI REAL-TIME (Pj1 DEPLOYMENT)
+
+Pengujian inferensi langsung (*real-time webcam*) menggunakan model terbaik **YOLOv8n (E3 Tuning)** yang terhubung ke kamera **Intel RealSense D455**:
+
+<div align="center">
+  <img src="docs/live_detection_realsense.png" alt="Live YOLOv8 Detection RealSense D455" width="850"/>
+  <p><em>Gambar 1: Pengujian Live Webcam RealSense D455 — Model berhasil mendeteksi multi-objek balok (merah: 0.95 & 0.89, hitam: 0.85, hijau: 0.55) secara akurat pada resolusi 1280x720 dengan kecepatan 28.0 FPS (latensi inferensi 26.0 ms).</em></p>
+</div>
+
+---
+
 ## 🗺️ PETA ALUR BELAJAR & KETERKAITAN TUGAS (ROADMAP)
 
 Seluruh materi praktikum semester ini merupakan satu alur kerja yang bersambung (*end-to-end vision pipeline*) untuk manipulasi robot cerdas:
@@ -32,7 +43,7 @@ flowchart LR
 
 Kalibrasi kamera bertujuan memodelkan geometri kamera dan menghilangkan distorsi lengkung lensa agar titik piksel dapat dipetakan secara akurat ke koordinat dunia nyata robot ($X, Y, Z$).
 
-### 1. Parameter Kalibrasi
+### 1. Parameter & Hasil Kalibrasi
 - **Jumlah Citra Uji**: 28 foto papan catur (resolusi asli **1280x720** piksel).
 - **Spesifikasi Papan Catur**: Papan $6 \times 9$ sudut dalam (*inner corners*), ukuran kotak fisik **25.0 mm**.
 - **Hasil Reprojection Error**: **RMS = 0.541 piksel** (*Cukup presisi, jauh di bawah ambang batas < 1.0 px*).
@@ -41,13 +52,14 @@ Kalibrasi kamera bertujuan memodelkan geometri kamera dan menghilangkan distorsi
 $$K = \begin{bmatrix} 642.03 & 0 & 634.09 \\ 0 & 639.78 & 358.05 \\ 0 & 0 & 1 \end{bmatrix}$$
 - Jarak fokal: $f_x = 642.03 \text{ px}, f_y = 639.78 \text{ px}$ (Field of View horizontal $\approx 89.8^\circ$).
 - Titik pusat optik: $c_x = 634.09 \text{ px}, c_y = 358.05 \text{ px}$ (tepat di tengah frame 1280x720).
-- **Koefisien Distorsi ($k_1, k_2, p_1, p_2, k_3$)**:
-  `[-0.02192, 0.01471, -0.00101, 0.00013, 0.01228]`
+- **Koefisien Distorsi ($k_1, k_2, p_1, p_2, k_3$)**: `[-0.02192, 0.01471, -0.00101, 0.00013, 0.01228]`.
 
-### 3. Evaluasi Kelurusan Garis
-- Rata-rata penyimpangan garis lurus **sebelum undistort**: $0.47 \text{ px}$ (maksimum $3.38 \text{ px}$).
-- Rata-rata penyimpangan garis lurus **sesudah undistort**: $0.40 \text{ px}$ (maksimum $1.63 \text{ px}$).
-- **Bukti & Visualisasi**: Tersimpan di folder [`kalibrasi/`](kalibrasi/) dan [`laporan_p1/`](laporan_p1/) (`P1_sudut_terdeteksi.jpg`, `P1_sebelum_sesudah.jpg`, `P1_error_per_foto.png`).
+### 3. Dokumentasi Visual Kalibrasi (P1)
+
+| Deteksi Sudut Papan Catur (Metode Zhang) | Evaluasi Distorsi (Sebelum vs Sesudah Undistort) |
+|:---:|:---:|
+| <img src="laporan_p1/P1_sudut_terdeteksi.jpg" width="420" alt="Deteksi Sudut Papan Catur"/> | <img src="laporan_p1/P1_sebelum_sesudah.jpg" width="420" alt="Sebelum dan Sesudah Undistort"/> |
+| *Deteksi grid sudut dalam papan catur* | *Perbaikan kelurusan garis tepi dari 3.38 px ke 1.63 px* |
 
 ---
 
@@ -68,7 +80,14 @@ Tercatat resmi di [`results/summary.csv`](results/summary.csv) dan kurva [`resul
 | **Partial Fine-tuning** | Layer 4 + head (`fc`) | **100%** | **170.1 s** | Penyesuaian fitur representasi tingkat tinggi. |
 | **Train from Scratch** | Semua layer dari nol | **100%** | **331.0 s** | Waktu 3x lebih lama untuk mencapai konvergensi yang sama. |
 
-### 3. Pengukuran Latensi Inferensi vs Anggaran 15 FPS (~66.7 ms)
+### 3. Dokumentasi Visual Kurva Pelatihan (P2)
+
+<div align="center">
+  <img src="results/curve.png" alt="Kurva Akurasi dan Loss Pelatihan ResNet-18" width="650"/>
+  <p><em>Gambar 2: Kurva Loss dan Akurasi ResNet-18 — Strategi Feature Extraction dan Partial mencapai 100% akurasi lebih cepat dibandingkan Scratch.</em></p>
+</div>
+
+### 4. Pengukuran Latensi Inferensi vs Anggaran 15 FPS (~66.7 ms)
 Dievaluasi via skrip [`latency.py`](latency.py) pada CPU laptop:
 - **Preprocessing (Undistort + Resize + Normalisasi)**: **1.8 ms** (p95: 2.5 ms).
 - **Inferensi ResNet-18**: **15.3 ms** (~65.5 FPS).
@@ -80,19 +99,17 @@ Dievaluasi via skrip [`latency.py`](latency.py) pada CPU laptop:
 
 Praktikum minggu ke-4 dan 5 berfokus pada transisi dari klasifikasi satu gambar satu label ke deteksi banyak objek dengan *bounding box*.
 
-### 1. Dua Format Anotasi Deteksi
+### 1. Format Anotasi & Struktur Folder (`dataset_v1/`)
 - **Format YOLO**: Format baris teks per citra (`class cx cy w h`) dinormalisasi 0–1 terhadap dimensi gambar.
 - **Format COCO**: Satu file JSON hierarkis (`bbox: [x, y, w, h]`, `category_id`) dalam satuan piksel absolut.
+- **Proporsi Data**: 236 Train (70%), 81 Val (20%), 81 Test (10%) terbagi per sesi anti-leakage via [`split_yolo.py`](split_yolo.py).
 
-### 2. Struktur Dataset Akhir (`dataset_v1/`)
-Dataset deteksi proyek disusun dengan konfigurasi [`dataset_v1/data.yaml`](dataset_v1/data.yaml):
-- **Train Set**: 236 citra (70%)
-- **Validation Set**: 81 citra (20%)
-- **Test Set**: 81 citra (10%)
-- **Dua Arah Anotasi Tersedia**:
-  - Format YOLO: [`dataset_v1/labels/`](dataset_v1/labels/)
-  - Format COCO: [`dataset_v1/annotations/instances_{train,val,test}.json`](dataset_v1/annotations/)
-- **Auto-Boxing HSV & Validasi**: Menggunakan algoritma segmentasi warna [`autobox.py`](vision/autobox.py) dan diuji bebas error via [`check_labels.py`](check_labels.py).
+### 2. Dokumentasi Visual Contoh Anotasi Bounding Box (P3)
+
+| Contoh Anotasi Balok Hijau | Contoh Anotasi Balok Merah |
+|:---:|:---:|
+| <img src="preview/hijau_20261026_lab_s1_005.png" width="420" alt="Anotasi Balok Hijau"/> | <img src="preview/merah_20261026_lab_s4_003.png" width="420" alt="Anotasi Balok Merah"/> |
+| *Verifikasi kotak bounding box kelas hijau* | *Verifikasi kotak bounding box kelas merah* |
 
 ---
 
@@ -109,7 +126,13 @@ Pada tahap minggu ke-6, model deteksi YOLOv8n dilatih untuk membuktikan hipotesi
   - **E1 Pretrained** = **0.917 (91.7%)**
   - **E2 Scratch** = **0.679 (67.9%)**
 - **Kesimpulan CLO-4**: Terjadi **lonjakan performa sebesar +23.8%** pada E1. Bobot pretrained COCO memberikan dasar filter visual (tepi objek, gradien, kontur) yang sangat membantu lokalisasi spasial balok, sedangkan model dari nol belum mampu mencapai regresi bounding box yang presisi dalam 30 epoch.
-- **Bukti Kurva**: Grafik loss dan metrik tersimpan di [`hasil_praktik/E1_pretrained/results.png`](hasil_praktik/E1_pretrained/results.png) dan [`hasil_praktik/E2_scratch/results.png`](hasil_praktik/E2_scratch/results.png).
+
+### 3. Dokumentasi Visual Evaluasi Pelatihan (P4)
+
+| Kurva Pelatihan 30 Epoch YOLOv8 (Loss & mAP) | Confusion Matrix Ternormalisasi |
+|:---:|:---:|
+| <img src="hasil_praktik/E1_pretrained/results.png" width="430" alt="Kurva Pelatihan YOLOv8 E1"/> | <img src="hasil_praktik/E3_tuning/confusion_matrix_normalized.png" width="400" alt="Confusion Matrix"/> |
+| *Kurva konvergensi Loss dan kenaikan mAP E1_pretrained* | *Matriks evaluasi prediksi antar kelas (merah, hijau, hitam)* |
 
 ---
 

@@ -1,0 +1,9 @@
+numpy
+opencv-python
+matplotlib
+# hanya untuk train.py dan latency.py:
+torch
+torchvision
+pillow
+# opsional (YOLO pralatih COCO, bila tidak memakai program dosen):
+# ultralytics

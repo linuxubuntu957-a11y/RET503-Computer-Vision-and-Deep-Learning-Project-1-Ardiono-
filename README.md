@@ -1,138 +1,176 @@
-# RET503: Computer Vision & Deep Learning — Project 1 (PBL)
-## Politeknik Negeri Batam — Program Studi Teknologi Rekayasa Robotika
-### Repositori Praktikum Terpadu Minggu 4–7 & Pj1: Dari Data ke Model YOLO
+# RET503: Computer Vision & Deep Learning — Portofolio Lengkap Praktikum (P1 – Pj1)
+## Program Studi Teknologi Rekayasa Robotika — Politeknik Negeri Batam
+### Proyek Sistem Visi Robotika (PBL): Dari Kalibrasi Kamera hingga Deteksi Objek Real-Time
 
 ---
 
 ### IDENTITAS MAHASISWA
 - **Nama Mahasiswa** : Ardiono
 - **NIM**            : 422411022
-- **Waktu Eksekusi**  : 31-10-2026 22:57:02 WIB
+- **Kelas / Semester**: Rekayasa Robotika
 - **Komputer / Host** : LAPTOP-G84B67B2 / User
-- **Dataset Proyek**  : `dataset_v1` (Sidik Jari Label: `8E25699C0A30`)
-- **Model**           : YOLOv8n (Nano)
+- **Kamera Utama**    : Intel(R) RealSense(TM) Depth Camera D455 (RGB 1280x720)
+- **Sidik Jari Label**: `8E25699C0A30` (SHA-256 Otentikasi Dataset)
 
 ---
 
-## 📌 PEMENUHAN ASESMEN RPS & KETENTUAN TUGAS (PPT MINGGU 4–7)
+## 🗺️ PETA ALUR BELAJAR & KETERKAITAN TUGAS (ROADMAP)
 
-Berdasarkan ketentuan pada **Slide 38 PPT Minggu 4–7**, berikut adalah matriks bukti pemenuhan tugas yang telah diselesaikan di repositori ini:
+Seluruh materi praktikum semester ini merupakan satu alur kerja yang bersambung (*end-to-end vision pipeline*) untuk manipulasi robot cerdas:
 
-| Asesmen RPS | Ketentuan PPT Dosen | Bukti di Repositori Ini | Status |
-|---|---|---|:---:|
-| **P3 (CLO-3)** | **Tahap 1–2: Data projek mahasiswa** (YOLO/COCO, train/val/test, data.yaml) | Folder [`dataset_v1/`](dataset_v1/) lengkap dengan `data.yaml`, anotasi COCO [`instances_*.json`](dataset_v1/annotations/), label YOLO [`labels/`](dataset_v1/labels/), pembagian per sesi anti-leakage via [`split_yolo.py`](split_yolo.py), dan validasi [`check_labels.py`](check_labels.py). | ✅ **LENGKAP** |
-| **P4 (CLO-4)** | **Tahap 3: Hasil E1 & E3, `results.png` kedua eksperimen** | Grafik kurva pelatihan [`results.png`](hasil_praktik/E1_pretrained/results.png), confusion matrix, dan kurva PR untuk **E1_pretrained**, **E2_scratch**, dan **E3_tuning** di folder [`hasil_praktik/`](hasil_praktik/). | ✅ **LENGKAP** |
-| **Pj1 (CLO-4)** | **Tahap 4–6: `hasil_praktik_<NIM>.txt/.csv`, analisis & hasil test (README)** | Berkas resmi [`hasil_praktik_422411022.txt`](hasil_praktik_422411022.txt), [`hasil_praktik_422411022.csv`](hasil_praktik_422411022.csv), tabel hasil, analisis test set, dan konsep sistem persepsi di README ini serta dokumen [`LAPORAN_PRAKTIK_RET503_MINGGU_4-7.md`](LAPORAN_PRAKTIK_RET503_MINGGU_4-7.md). | ✅ **LENGKAP** |
-
----
-
-## 📊 HASIL PRAKTIK TERPADU RESMI (Slide 37)
-
-Tabel berikut diekstrak langsung dari berkas resmi `hasil_praktik_422411022.txt`:
-
-```text
-==============================================================================
-  PRAKTIK TERPADU MINGGU 4-7 - RET503
-==============================================================================
-  NIM / Nama    : 422411022 / Ardiono
-  Waktu         : 31-10-2026 22:57:02
-  Komputer/user : LAPTOP-G84B67B2 / User
-  Dataset       : dataset_v1  (sidik jari label: 8E25699C0A30)
-  Pengaturan    : model yolov8n, epochs 30, imgsz 416, batch 16
-==============================================================================
-  Eksperimen     Perubahan        mAP50  mAP50-95      P      R     ms   menit
-  E1_pretrained  -                0.995     0.917  0.990  1.000   14.1    13.8
-  E2_scratch     -                0.969     0.679  0.853  0.911    8.2    13.7
-  E3_tuning      imgsz=640        0.995     0.919  0.993  0.989   24.9    90.0
-==============================================================================
-  Model terpilih (mAP50-95 val tertinggi): E3_tuning
-  Hasil di data TEST (sekali saja)       : mAP50 0.995 | mAP50-95 0.915
-==============================================================================
+```mermaid
+flowchart LR
+    P1["P1: Kalibrasi Kamera (Metode Zhang)"] --> P2["P2: Klasifikasi & Latensi (ResNet-18)"]
+    P2 --> P3["P3: Anotasi & Dataset YOLO/COCO"]
+    P3 --> P4["P4: Melatih YOLO & Transfer Learning"]
+    P4 --> Pj1["Pj1: Tuning, Evaluasi Test & Live Deteksi"]
 ```
 
-### Rangkuman Metrik Utama
+---
 
-| Eksperimen | Perubahan | mAP50 | mAP50-95 | Precision | Recall | Inferensi (ms) | Waktu Latih (menit) |
+## 📷 BAGIAN 1: PRAKTIKUM 1 (P1) — KALIBRASI KAMERA METODE ZHANG
+
+Kalibrasi kamera bertujuan memodelkan geometri kamera dan menghilangkan distorsi lengkung lensa agar titik piksel dapat dipetakan secara akurat ke koordinat dunia nyata robot ($X, Y, Z$).
+
+### 1. Parameter Kalibrasi
+- **Jumlah Citra Uji**: 28 foto papan catur (resolusi asli **1280x720** piksel).
+- **Spesifikasi Papan Catur**: Papan $6 \times 9$ sudut dalam (*inner corners*), ukuran kotak fisik **25.0 mm**.
+- **Hasil Reprojection Error**: **RMS = 0.541 piksel** (*Cukup presisi, jauh di bawah ambang batas < 1.0 px*).
+
+### 2. Matriks Kamera Intrinsic ($K$) & Distorsi Lensa
+$$K = \begin{bmatrix} 642.03 & 0 & 634.09 \\ 0 & 639.78 & 358.05 \\ 0 & 0 & 1 \end{bmatrix}$$
+- Jarak fokal: $f_x = 642.03 \text{ px}, f_y = 639.78 \text{ px}$ (Field of View horizontal $\approx 89.8^\circ$).
+- Titik pusat optik: $c_x = 634.09 \text{ px}, c_y = 358.05 \text{ px}$ (tepat di tengah frame 1280x720).
+- **Koefisien Distorsi ($k_1, k_2, p_1, p_2, k_3$)**:
+  `[-0.02192, 0.01471, -0.00101, 0.00013, 0.01228]`
+
+### 3. Evaluasi Kelurusan Garis
+- Rata-rata penyimpangan garis lurus **sebelum undistort**: $0.47 \text{ px}$ (maksimum $3.38 \text{ px}$).
+- Rata-rata penyimpangan garis lurus **sesudah undistort**: $0.40 \text{ px}$ (maksimum $1.63 \text{ px}$).
+- **Bukti & Visualisasi**: Tersimpan di folder [`kalibrasi/`](kalibrasi/) dan [`laporan_p1/`](laporan_p1/) (`P1_sudut_terdeteksi.jpg`, `P1_sebelum_sesudah.jpg`, `P1_error_per_foto.png`).
+
+---
+
+## 🧠 BAGIAN 2: PRAKTIKUM 2 (P2) — KLASIFIKASI CITRA & BENCHMARK LATENSI
+
+Pada tahap ini, citra potongan (*cropped ROI*) balok industri diklasifikasikan menggunakan arsitektur deep learning ResNet-18 dengan 3 strategi pelatihan yang berbeda, serta diukur latensinya terhadap anggaran kontrol robot.
+
+### 1. Dataset Klasifikasi (`dataset_raw/`)
+- Objek: Balok industri 3 kelas (`hijau`, `hitam`, `merah`) berukuran input $224 \times 224$ piksel.
+- Pembagian data dilakukan **per sesi pengambilan waktu** ([`split.json`](split.json)) untuk mencegah kebocoran data (*anti data leakage*).
+
+### 2. Perbandingan 3 Strategi Pelatihan (ResNet-18)
+Tercatat resmi di [`results/summary.csv`](results/summary.csv) dan kurva [`results/curve.png`](results/curve.png):
+
+| Strategi Pelatihan | Layer yang Dilatih | Akurasi Validasi | Waktu Latih (detik) | Analisis Karakteristik |
+|---|---|:---:|:---:|---|
+| **Feature Extraction** | Hanya head output (`fc`) | **100%** | **110.3 s** | Paling cepat konvergen, komputasi ringan, backbone beku. |
+| **Partial Fine-tuning** | Layer 4 + head (`fc`) | **100%** | **170.1 s** | Penyesuaian fitur representasi tingkat tinggi. |
+| **Train from Scratch** | Semua layer dari nol | **100%** | **331.0 s** | Waktu 3x lebih lama untuk mencapai konvergensi yang sama. |
+
+### 3. Pengukuran Latensi Inferensi vs Anggaran 15 FPS (~66.7 ms)
+Dievaluasi via skrip [`latency.py`](latency.py) pada CPU laptop:
+- **Preprocessing (Undistort + Resize + Normalisasi)**: **1.8 ms** (p95: 2.5 ms).
+- **Inferensi ResNet-18**: **15.3 ms** (~65.5 FPS).
+- **Total Pipeline (Preprocess + Inference)**: **17.1 ms** $\rightarrow$ **MEMENUHI TARGET (Jauh di bawah batas aman 66.7 ms)**.
+
+---
+
+## 📦 BAGIAN 3: PRAKTIKUM 3 (P3 - CLO-3) — PREPARASI DATASET DETEKSI (YOLO & COCO)
+
+Praktikum minggu ke-4 dan 5 berfokus pada transisi dari klasifikasi satu gambar satu label ke deteksi banyak objek dengan *bounding box*.
+
+### 1. Dua Format Anotasi Deteksi
+- **Format YOLO**: Format baris teks per citra (`class cx cy w h`) dinormalisasi 0–1 terhadap dimensi gambar.
+- **Format COCO**: Satu file JSON hierarkis (`bbox: [x, y, w, h]`, `category_id`) dalam satuan piksel absolut.
+
+### 2. Struktur Dataset Akhir (`dataset_v1/`)
+Dataset deteksi proyek disusun dengan konfigurasi [`dataset_v1/data.yaml`](dataset_v1/data.yaml):
+- **Train Set**: 236 citra (70%)
+- **Validation Set**: 81 citra (20%)
+- **Test Set**: 81 citra (10%)
+- **Dua Arah Anotasi Tersedia**:
+  - Format YOLO: [`dataset_v1/labels/`](dataset_v1/labels/)
+  - Format COCO: [`dataset_v1/annotations/instances_{train,val,test}.json`](dataset_v1/annotations/)
+- **Auto-Boxing HSV & Validasi**: Menggunakan algoritma segmentasi warna [`autobox.py`](vision/autobox.py) dan diuji bebas error via [`check_labels.py`](check_labels.py).
+
+---
+
+## 🎯 BAGIAN 4: PRAKTIKUM 4 (P4 - CLO-4) — PELATIHAN YOLO & BUKTI TRANSFER LEARNING
+
+Pada tahap minggu ke-6, model deteksi YOLOv8n dilatih untuk membuktikan hipotesis transfer learning.
+
+### 1. Perbandingan Baseline E1 vs Pembanding E2
+- **E1 (Pretrained COCO)**: Menggunakan bobot awal `yolov8n.pt` (transfer learning dari 80 kelas COCO).
+- **E2 (Scratch)**: Arsitektur identik `yolov8n.yaml` dengan bobot diinisialisasi acak tanpa transfer learning.
+
+### 2. Bukti Empiris Manfaat Transfer Learning
+- **Akurasi Ketat `mAP50-95`**:
+  - **E1 Pretrained** = **0.917 (91.7%)**
+  - **E2 Scratch** = **0.679 (67.9%)**
+- **Kesimpulan CLO-4**: Terjadi **lonjakan performa sebesar +23.8%** pada E1. Bobot pretrained COCO memberikan dasar filter visual (tepi objek, gradien, kontur) yang sangat membantu lokalisasi spasial balok, sedangkan model dari nol belum mampu mencapai regresi bounding box yang presisi dalam 30 epoch.
+- **Bukti Kurva**: Grafik loss dan metrik tersimpan di [`hasil_praktik/E1_pretrained/results.png`](hasil_praktik/E1_pretrained/results.png) dan [`hasil_praktik/E2_scratch/results.png`](hasil_praktik/E2_scratch/results.png).
+
+---
+
+## 🏆 BAGIAN 5: PRAKTIKUM TERPADU & PROYEK 1 (Pj1 - CLO-4) — TUNING, TEST EVALUASI & DEPLOYMENT
+
+Pj1 (*Perception System Concept and Design*) merupakan integrasi menyeluruh minggu 3–7 untuk sistem visi robot nyata.
+
+### 1. Hasil Resmi Pelatihan 30 Epochs (Slide 37)
+Terekam resmi di berkas [`hasil_praktik_422411022.txt`](hasil_praktik_422411022.txt) (Sidik Jari Label: `8E25699C0A30`):
+
+| Eksperimen | Perubahan Parameter | mAP50 | mAP50-95 | Precision | Recall | Inferensi (ms) | Waktu Latih |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **E1_pretrained** | *Baseline (Transfer Learning 416 px)* | **0.995** | **0.917** | 0.990 | 1.000 | 14.1 ms | 13.8 m |
-| **E2_scratch** | *Bobot Acak (Tanpa Transfer)* | **0.969** | **0.679** | 0.853 | 0.911 | 8.2 ms | 13.7 m |
-| **E3_tuning** | `imgsz=640` *(Resolusi Input Tinggi)* | **0.995** | **0.919** | 0.993 | 0.989 | 24.9 ms | 90.0 m |
+| **E1_pretrained** | Baseline ($416 \text{ px}$) | **0.995** | **0.917** | 0.990 | 1.000 | 14.1 ms | 13.8 m |
+| **E2_scratch** | Bobot Acak ($416 \text{ px}$) | **0.969** | **0.679** | 0.853 | 0.911 | 8.2 ms | 13.7 m |
+| **E3_tuning** | Resolusi Tinggi ($640 \text{ px}$) | **0.995** | **0.919** | 0.993 | 0.989 | 24.9 ms | 90.0 m |
+
+### 2. Model Terpilih & Uji Akhir pada Data TEST (Unseen Data - 1 Kali Eksekusi)
+- **Model Terbaik**: **`E3_tuning`** (mAP50-95 validasi tertinggi = **0.919**).
+- **Hasil Pengujian di Data TEST**:
+  - **mAP50**: **0.995 (99.5%)**
+  - **mAP50-95**: **0.915 (91.5%)**
+  - **Precision**: **0.997** | **Recall**: **1.000**
+- **Analisis Overfitting**: Selisih mAP antara data validasi (0.919) dan data test (0.915) hanya $0.004$ ($<0.5\%$). Ini membuktikan model memiliki **kemampuan generalisasi sempurna** pada data yang belum pernah dilihat.
+
+### 3. Desain Sistem Persepsi & Kelaikan Robotika (Slide 32)
+- **Target Misi**: Deteksi balok warna merah, hijau, hitam untuk sistem sortasi lengan robot Universal Robots (UR).
+- **Hardware Kamera**: Webcam eksternal **Intel RealSense D455** pada resolusi terkoreksi $1280 \times 720$.
+- **Analisis Waktu Siklus**: Waktu inferensi model terpilih E3 adalah **24.9 ms** (~40.1 FPS), jauh di bawah ambang batas aman penglihatan robot **66.7 ms (15 FPS)**.
+- **Skrip Live Kamera**: Telah diimplementasikan di [`live_detect.py`](live_detect.py) dengan backend DirectShow tanpa lag buffer.
 
 ---
 
-## 🔬 ANALISIS EKSPERIMEN & HASIL TEST (Pj1 - CLO-4)
+## 📋 MATRIKS PEMENUHAN ASESMEN RPS LENGKAP
 
-### 1. Pembuktian Transfer Learning (E1 vs E2)
-- Pada metrik ketat **`mAP50-95`**, model **E1_pretrained (0.917)** mengungguli **E2_scratch (0.679)** secara signifikan (+23.8%).
-- **Analisis Fisik/Komputasi**: Backbone yang telah dilatih pada COCO membawa filter spasial kaya (tepi, tekstur, sudut). Model hanya perlu menyesuaikan bobot head untuk kelas proyek balok. Sebaliknya, model dari nol (*scratch*) memerlukan ribuan epoch dan data lebih besar agar lokalisasi kotaknya presisi.
-
-### 2. Evaluasi Hyperparameter Tuning (E1 vs E3)
-- Menaikkan resolusi input dari 416 ke 640 pada **E3_tuning** meningkatkan `mAP50-95` menjadi **0.919** (tertinggi di data validasi).
-- **Trade-off Komputasi**: Peningkatan akurasi membutuhkan waktu komputasi inferensi lebih besar (14.1 ms menjadi 24.9 ms) dan waktu latih CPU melonjak dari 13.8 menit ke 90 menit.
-
-### 3. Hasil Pengujian pada Data TEST (Unseen Data - 1 Kali Saja)
-- Model terpilih (**E3_tuning**) diuji pada split `test` (81 citra) yang belum pernah dilihat saat pelatihan:
-  - **mAP50** = **0.995 (99.5%)**
-  - **mAP50-95** = **0.915 (91.5%)**
-  - **Precision** = **0.997** | **Recall** = **1.000**
-- **Kesimpulan Generalisasi**: Performa data uji konsisten dengan data validasi (0.915 vs 0.919). Hal ini membuktikan bahwa strategi pemisahan dataset per sesi (*anti data leakage*) berhasil mencegah model dari menghafal (*overfitting*).
-
-### 4. Analisis Kelayakan Sistem Robotika (Latensi vs Target 15 FPS)
-- Sesuai standar rancangan sistem robotika (misi manipulasi Universal Robots / UR), batas total anggaran satu siklus penglihatan pada 15 FPS adalah **66.7 ms**.
-- Model E3 membutuhkan **24.9 ms** untuk inferensi (dan E1 hanya **14.1 ms**). Dengan tambahan preprocessing & postprocessing (~2 ms), sistem berjalan pada **~40 FPS**, sehingga **sangat aman dan layak untuk integrasi kontrol robot real-time**.
+| Kode Tugas | Capaian Pembelajaran (CLO) | Komponen Praktik yang Dinilai | Bukti Berkas di Repositori |
+|---|---|---|---|
+| **P1** | **Kalibrasi Kamera** | Model pinhole, matriks K, distorsi, evaluasi RMS error | [`kalibrasi/`](kalibrasi/), [`kalibrasi.py`](kalibrasi.py), [`laporan_p1/`](laporan_p1/) |
+| **P2** | **Klasifikasi & Latensi** | Transfer learning ResNet-18, split per sesi, uji latensi 15 FPS | [`dataset_raw/`](dataset_raw/), [`train.py`](train.py), [`latency.py`](latency.py), [`results/`](results/) |
+| **P3** | **CLO-3 (Data YOLO/COCO)** | Struktur dataset, data.yaml, konversi format, validasi kotak | [`dataset_v1/`](dataset_v1/), [`split_yolo.py`](split_yolo.py), [`check_labels.py`](check_labels.py) |
+| **P4** | **CLO-4 (Pelatihan YOLO)** | Eksperimen E1 vs E2, transfer learning, grafik results.png | [`hasil_praktik/E1_pretrained/`](hasil_praktik/E1_pretrained/), [`hasil_praktik/E2_scratch/`](hasil_praktik/E2_scratch/) |
+| **Pj1** | **CLO-4 (Perception System)** | Tuning E3, uji data test, konsep sistem, live webcam | [`hasil_praktik_422411022.txt`](hasil_praktik_422411022.txt), [`LAPORAN_PRAKTIK_RET503_MINGGU_4-7.md`](LAPORAN_PRAKTIK_RET503_MINGGU_4-7.md), [`live_detect.py`](live_detect.py) |
 
 ---
 
-## 🛠️ KONSEP SISTEM PERSEPSI (Pj1 - Slide 32)
+## 🚀 PANDUAN MENJALANKAN PIPELINE (P1 – Pj1)
 
-1. **Lingkup Persepsi**: Mendeteksi 3 balok objek (`merah`, `hijau`, `hitam`) pada meja kerja robot di bawah variasi pencahayaan laboratorium.
-2. **Target Kinerja**:
-   - Akurasi: mAP50 > 90% (Tercapai: **99.5%**).
-   - Kecepatan: Latensi < 66.7 ms / > 15 FPS (Tercapai: **24.9 ms / ~40 FPS**).
-3. **Hardware & Pipeline**:
-   - Kamera: **Intel RealSense D455** (Webcam eksternal, resolusi asli 1280x720, DirectShow).
-   - Kalibrasi Lensa: Metode Zhang ([`kalibrasi/kalibrasi_kamera.npz`](kalibrasi/kalibrasi_kamera.npz), RMS error **0.541 px**).
-   - Inferensi: Model PyTorch YOLOv8n terpilih ([`hasil_praktik/E3_tuning/weights/best.pt`](hasil_praktik/E3_tuning/weights/best.pt)) atau format ekspor ONNX ([`export_eval.py`](export_eval.py)).
+Semua perintah dijalankan dari root direktori proyek:
 
----
-
-## 📁 STRUKTUR FOLDER REPOSITORI
-
-```
-vision_kit/
-├── vision/                 # Framework modular vision (calib, camera, autobox, splitting, dll.)
-├── tests/                  # 62 Unit tests (100% lulus)
-├── kalibrasi/              # Hasil kalibrasi kamera (RMS 0.541 px, K, dist, foto catur)
-├── dataset_v1/             # Dataset YOLO & COCO (data.yaml, labels/, annotations/)
-├── hasil_praktik/          # Output lengkap 3 eksperimen (E1, E2, E3, kurva loss, PR, CF matrix)
-│   ├── E1_pretrained/      # results.png, BoxPR_curve.png, confusion_matrix.png, weights/
-│   ├── E2_scratch/         # results.png, BoxPR_curve.png, confusion_matrix.png, weights/
-│   └── E3_tuning/          # results.png, BoxPR_curve.png, confusion_matrix.png, weights/best.pt
-├── hasil_praktik_422411022.txt   # Bukti numerik resmi teks (sidik jari: 8E25699C0A30)
-├── hasil_praktik_422411022.csv   # Bukti numerik resmi CSV
-├── LAPORAN_PRAKTIK_RET503_MINGGU_4-7.md # Laporan praktikum formal lengkap
-├── live_detect.py          # Skrip inferensi live webcam RealSense D455 (1280x720)
-├── export_eval.py          # Ekspor model ke format ONNX & evaluasi
-├── 06_latih_bandingkan.py  # Skrip resmi pelatihan 3 eksperimen dosen
-└── README.md               # Dokumentasi utama proyek & laporan Pj1
-```
-
----
-
-## 🚀 CARA MENJALANKAN
-
-### 1. Inferensi Kamera Langsung (Live RealSense D455)
 ```powershell
-python live_detect.py
-```
-*(Menjalankan webcam RealSense pada resolusi 1280x720 terkoreksi distorsi secara real-time. Tekan 'q' untuk keluar).*
+# 1. Menjalankan evaluasi kalibrasi kamera (P1)
+python laporan_p1.py
 
-### 2. Pelatihan & Evaluasi Ulang (Skrip Dosen)
-```powershell
+# 2. Menjalankan benchmark latensi ResNet-18 vs MobileNetV3 (P2)
+python latency.py
+
+# 3. Memeriksa kualitas anotasi bounding box dataset (P3)
+python check_labels.py --images dataset_v1/images/train --nc 3 --names merah hijau hitam
+
+# 4. Menjalankan pelatihan & pembandingan 3 eksperimen YOLOv8 (P4 & Pj1)
 python 06_latih_bandingkan.py --nim 422411022 --nama "Ardiono" --model yolov8n --epochs 30
-```
 
-### 3. Ekspor & Evaluasi Model ONNX
-```powershell
-python export_eval.py
+# 5. Menjalankan deteksi langsung real-time kamera Intel RealSense D455 (Pj1 Deployment)
+python live_detect.py
 ```

@@ -1,0 +1,8 @@
+path: C:/Users/User/Documents/vision_kit/dataset_v1
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: merah
+  1: hijau
+  2: hitam

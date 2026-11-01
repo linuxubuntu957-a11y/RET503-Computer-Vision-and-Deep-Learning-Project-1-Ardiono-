@@ -7,6 +7,16 @@ __pycache__/
 *.cache
 *.temp
 
+# Heavy raw duplicate photo folders (prevent HTTP 408 timeout on push)
+objek/
+raw/
+raw_perlu_label/
+dataset_v1/images/
+runs/
+
+# Heavy binary weights (YOLO best.pt in hasil_praktik is kept)
+best_resnet18_*.pt
+
 # OS files
 Thumbs.db
 Desktop.ini

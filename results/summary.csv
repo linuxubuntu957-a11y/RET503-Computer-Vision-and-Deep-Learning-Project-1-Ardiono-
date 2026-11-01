@@ -1,0 +1,4 @@
+arch,mode,val_acc_terbaik,epoch_terbaik,epoch_acc>=90%,waktu_latih_detik
+resnet18,feature,1.0,2,2,110.3
+resnet18,partial,1.0,1,1,170.1
+resnet18,scratch,1.0,2,2,331.0

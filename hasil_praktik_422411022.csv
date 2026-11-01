@@ -1,0 +1,4 @@
+eksperimen,perubahan,pretrained,mAP50,mAP50-95,precision,recall,inferensi_ms,waktu_latih_menit,imgsz,bobot
+E1_pretrained,-,True,0.995,0.9171,0.9898,1.0,14.14,13.84,416,C:\Users\User\Documents\vision_kit\hasil_praktik\E1_pretrained\weights\best.pt
+E2_scratch,-,False,0.9694,0.6793,0.853,0.911,8.17,13.7,416,C:\Users\User\Documents\vision_kit\hasil_praktik\E2_scratch\weights\best.pt
+E3_tuning,imgsz=640,True,0.9947,0.9186,0.993,0.9885,24.95,89.98,640,C:\Users\User\Documents\vision_kit\hasil_praktik\E3_tuning\weights\best.pt
